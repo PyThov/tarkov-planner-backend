@@ -1,5 +1,5 @@
 from models.tasks import Tasks, Task
-from models.items import ItemRequirement
+from models.items import Item, ItemRequirement
 from adapters.tarkov import TarkovAPI
 from utils.utils import time_something
 from typing import List, Dict, Optional
@@ -67,6 +67,18 @@ class TasksDP:
         # Return the tasks in the order required to complete the given task
         return tasks, itemReqs
 
+    def _prune_items_by_name(self, items: List[Item]) -> List[Item]:
+        unique_items: List[Item] = []
+        # for item in items:
+        #     if item
+        unique_names: List[str] = []
+        for item in items:
+            if item.name not in unique_names:
+                unique_names.append(item.name)
+                unique_items.append(item)
+        
+        return unique_items
+
     # Get a list of required items for the given task
     def _get_items_from_task(self, task: Task, itemReqs: List[ItemRequirement] = []) -> List[ItemRequirement]:
         # Loop through each objective in the task.
@@ -74,23 +86,30 @@ class TasksDP:
             # Check if the objective type is "giveItem" (meaning it requires giving an item).
             if obj.type == "giveItem":
                 # Loop through each item in the objective's items list.
-                for item in obj.items:
-                    # Try to find if the item already exists in the itemReqs list.
-                    existingItem = next(filter(lambda newItem: newItem.name == item.name, itemReqs), None)
+                itemReqs.append(
+                    ItemRequirement(
+                        count=obj.count,
+                        foundInRaid=obj.foundInRaid,
+                        items=self._prune_items_by_name(obj.items),
+                    )
+                )
+                # for item in obj.items:
+                #     # Try to find if the item already exists in the itemReqs list.
+                #     existingItem = next(filter(lambda newItem: newItem.name == item.name, itemReqs), None)
                     
-                    # If the item does not exist in the list, create a new ItemRequirement and add it.
-                    if existingItem is None:
-                        itemReqs.append(ItemRequirement(
-                            count=obj.count,              # The required quantity of the item.
-                            foundInRaid=obj.foundInRaid,  # Whether the item must be found in a raid.
-                            id=item.id,                   # The unique ID of the item.
-                            image512pxLink=item.image512pxLink,  # The URL of the item's image.
-                            name=item.name,               # The name of the item.
-                            wikiLink=item.wikiLink,       # The URL link to the item's wiki page.
-                        ))
-                    else:
-                        # If the item already exists in the list, update the count by adding the new objective's count.
-                        existingItem.count += obj.count
+                #     # If the item does not exist in the list, create a new ItemRequirement and add it.
+                #     if existingItem is None:
+                #         itemReqs.append(ItemRequirement(
+                #             count=obj.count,              # The required quantity of the item.
+                #             foundInRaid=obj.foundInRaid,  # Whether the item must be found in a raid.
+                #             id=item.id,                   # The unique ID of the item.
+                #             image512pxLink=item.image512pxLink,  # The URL of the item's image.
+                #             name=item.name,               # The name of the item.
+                #             wikiLink=item.wikiLink,       # The URL link to the item's wiki page.
+                #         ))
+                #     else:
+                #         # If the item already exists in the list, update the count by adding the new objective's count.
+                #         existingItem.count += obj.count
 
         # Return the list of item requirements.
         return itemReqs
