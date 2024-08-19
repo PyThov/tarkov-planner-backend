@@ -16,6 +16,7 @@ class Tasks(BaseModel):
     offset: int
 
 class TaskDependencies(BaseModel):
+    name: str
     tasks: List[Task]
     items: List[ItemRequirement]
     itemsTotal: int

@@ -4,8 +4,16 @@ ALL_TASKS = """
     tasks(lang: en, gameMode: regular) {
         id
         name
-    		trader{name, imageLink}
-    		map{name}
+        kappaRequired
+    		trader
+            {
+            	name,
+                imageLink
+            }
+    		map {
+            	name,
+            	wiki
+            }
     		wikiLink
     		taskImageLink
     		minPlayerLevel

@@ -4,6 +4,7 @@ from models.objectives import Objective
 
 class Map(BaseModel):
     name: str
+    wiki: Optional[HttpUrl] = None
 
 class Trader(BaseModel):
     name: str
@@ -18,6 +19,7 @@ class TaskRequirement(BaseModel):
 class Task(BaseModel):
     id: str = ''
     name: str = ''
+    kappaRequired: bool = False
     trader: Optional[Trader] = None # Assuming Trader has a valid default or is optional
     map: Optional[Map] = None
     wikiLink: Optional[HttpUrl] = None

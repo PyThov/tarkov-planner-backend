@@ -36,7 +36,7 @@ class TarkovAPI:
         with open(self.tasksPath, "w") as file:
             json.dump(data, file)
 
-        return Tasks(data.get("data", []))
+        return Tasks(tasks=data.get("data", []))
 
     def _run_query(self, query: str):
         headers = {"Content-Type": "application/json"}

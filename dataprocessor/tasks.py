@@ -28,6 +28,10 @@ class TasksDP:
     def get_all_tasks(self) -> List[Task]:
         return self.data.tasks
     
+    @time_something
+    def filter_tasks_by_name(self, searchTerm: str) -> List[Task]:
+        return list(filter(lambda item: searchTerm.lower() in item.name.lower(), self.data.tasks))
+    
     # Function to find all task dependencies using Pydantic models and Python typing
     @time_something
     def get_task_dependencies(self, task: Task) -> tuple[List[Task], List[ItemRequirement]]:
@@ -39,7 +43,7 @@ class TasksDP:
         visited: set = set()
         
         # depth first search
-        def dfs(current_task_id: str, itemReqs:  List[ItemRequirement] = []):
+        def dfs(current_task_id: str, itemReqs:  List[ItemRequirement]):
             if current_task_id in visited:
                 return
             visited.add(current_task_id)
@@ -51,14 +55,14 @@ class TasksDP:
                 # Find the required task by name (assuming names are unique)
                 required_task: Optional[Task] = next((t for t in self.data.tasks if t.name == required_task_name), None)
                 if required_task:
-                    dfs(required_task.id)
+                    dfs(required_task.id, itemReqs)
             
             # After visiting all dependencies, add the current task to the tasks
             tasks.append(current_task)
             return self._get_items_from_task(current_task, itemReqs)
 
         # Start the DFS from the given task
-        itemReqs = dfs(task.id)
+        itemReqs = dfs(task.id, itemReqs)
         
         # Return the tasks in the order required to complete the given task
         return tasks, itemReqs
@@ -96,5 +100,14 @@ class TasksDP:
         return max(tasks, key=lambda task: task.minPlayerLevel).minPlayerLevel
     
     @staticmethod
-    def count_items_req(itemReqs: List[ItemRequirement]) -> int:
-        return sum(item.count for item in itemReqs )
+    def count_items_req(tasks: List[Task]) -> int:
+        item_count = 0
+        for task in tasks:
+            for obj in task.objectives:
+                if obj.type == "giveItem":
+                    item_count += obj.count
+                    print(obj)
+                    print(item_count)
+                    print()
+
+        return item_count
