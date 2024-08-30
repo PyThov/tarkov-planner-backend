@@ -8,6 +8,8 @@ tasksDP = TasksDP()
 
 origins = [
     "http://localhost:5173",
+    "http://localhost:3000",
+    "http://frontend:3000",
 ]
 
 api.add_middleware(

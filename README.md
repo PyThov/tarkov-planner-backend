@@ -1,5 +1,13 @@
 See the UI here: https://github.com/PyThov/tarkov-planner-ui
 
+# Tarkov Planner - Backend
+
+To run the API:
+```bash
+python -m uvicorn api.v1.tarkov:api --reload
+```
+
+
 A Python service to process and serve tarkov API data to plan your tasks!
 
 API Needs:
