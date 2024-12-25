@@ -1,7 +1,10 @@
+from datetime import datetime, timedelta
+import os
 from pathlib import Path
-from fastapi import FastAPI, Depends, Query, Request
+import threading
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dataprocessor.tasks import TasksDP
 from .models import Tasks, TaskDependencies
@@ -17,15 +20,84 @@ origins = [
 ]
 
 # Mount the React frontend if the `static` directory exists
-static_dir = Path("/backend/static")
+static_dir = Path(os.getenv("STATIC_DIR", "/backend/static"))
 if static_dir.exists() and static_dir.is_dir():
     api.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
+
+# In-memory storage for rate limiting
+rate_limit_data = {}
+RATE_LIMIT = int(os.getenv("RATE_LIMIT", 20))  # Default to 20 requests
+RATE_LIMIT_CLEANING_INTERVAL = int(os.getenv("RATE_LIMIT_CLEANING_INTERVAL", 300))  # Default to 5 minutes
+TIME_WINDOW = timedelta(seconds=int(os.getenv("TIME_WINDOW", 60)))  # Default to 60 seconds
+
+print(f"RATE_LIMIT: {RATE_LIMIT}, TIME_WINDOW: {TIME_WINDOW}")
+
+def cleanup_rate_limit_data():
+    print(f"CLEANING RATE LIMIT DATA: Starting with {len(rate_limit_data.keys())} entries.")
+    now = datetime.now()
+    for ip in list(rate_limit_data.keys()):
+        if now - rate_limit_data[ip]["start_time"] > TIME_WINDOW:
+            print(f"----Deleting {ip} from Rate Limit Data")
+            del rate_limit_data[ip]
+    print(f"FINISHED CLEANING RATE LIMIT DATA: Ended with {len(rate_limit_data.keys())} entries.")
+
+    threading.Timer(RATE_LIMIT_CLEANING_INTERVAL, cleanup_rate_limit_data).start()  # Run cleanup every 60 seconds
+
+# Start cleanup on application startup
+@api.on_event("startup")
+async def startup():
+    cleanup_rate_limit_data()
+
+@api.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host
+    now = datetime.now()
+
+    if client_ip not in rate_limit_data:
+        rate_limit_data[client_ip] = {"count": 1, "start_time": now}
+    else:
+        client_data = rate_limit_data[client_ip]
+        if now - client_data["start_time"] > TIME_WINDOW:
+            rate_limit_data[client_ip] = {"count": 1, "start_time": now}
+        else:
+            client_data["count"] += 1
+            if client_data["count"] > RATE_LIMIT:
+                # Add CORS headers manually
+                response = JSONResponse(
+                    status_code=429,
+                    content={
+                        "message": "Rate limit exceeded. Try again later.",
+                        "hint": f"Max {RATE_LIMIT} requests per {TIME_WINDOW.seconds // 60} minute(s)."
+                    },
+                )
+                response.headers["Access-Control-Allow-Origin"] = "*"
+                response.headers["Access-Control-Allow-Methods"] = "GET"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+                return response
+
+    response = await call_next(request)
+    return response
+
+@api.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 429:  # Handle rate limit exceptions
+        return JSONResponse(
+            status_code=429,
+            content={
+                "message": exc.detail,
+                "hint": "You have hit the rate limit. Please wait before making more requests."
+            },
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 api.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET"],
     allow_headers=["*"],
 )
 
