@@ -3,6 +3,7 @@ from models.items import Item, ItemRequirement
 from adapters.tarkov import TarkovAPI
 from utils.utils import time_something
 from typing import List, Dict, Optional
+from .constants import CURRENCIES
 
 class TasksDP:
     def __init__(self, data: Tasks | None = None) -> None:
@@ -93,23 +94,6 @@ class TasksDP:
                         items=self._prune_items_by_name(obj.items),
                     )
                 )
-                # for item in obj.items:
-                #     # Try to find if the item already exists in the itemReqs list.
-                #     existingItem = next(filter(lambda newItem: newItem.name == item.name, itemReqs), None)
-                    
-                #     # If the item does not exist in the list, create a new ItemRequirement and add it.
-                #     if existingItem is None:
-                #         itemReqs.append(ItemRequirement(
-                #             count=obj.count,              # The required quantity of the item.
-                #             foundInRaid=obj.foundInRaid,  # Whether the item must be found in a raid.
-                #             id=item.id,                   # The unique ID of the item.
-                #             image512pxLink=item.image512pxLink,  # The URL of the item's image.
-                #             name=item.name,               # The name of the item.
-                #             wikiLink=item.wikiLink,       # The URL link to the item's wiki page.
-                #         ))
-                #     else:
-                #         # If the item already exists in the list, update the count by adding the new objective's count.
-                #         existingItem.count += obj.count
 
         # Return the list of item requirements.
         return itemReqs
@@ -124,9 +108,6 @@ class TasksDP:
         for task in tasks:
             for obj in task.objectives:
                 if obj.type == "giveItem":
-                    item_count += obj.count
-                    print(obj)
-                    print(item_count)
-                    print()
+                    item_count += obj.count if obj.items[0].name not in CURRENCIES else 1
 
         return item_count
