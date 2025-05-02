@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, validator
 from typing import Dict, List, Optional
 from models.objectives import Objective
 
@@ -27,6 +27,12 @@ class Task(BaseModel):
     minPlayerLevel: int = 0
     taskRequirements: List[TaskRequirement] = []
     objectives: List[Objective] = []
+    
+    @validator('wikiLink', pre=True)
+    def empty_string_to_none(cls, v):
+        if v == "":
+            return None
+        return v
 
 class Tasks(BaseModel):
     tasks: List[Task]
